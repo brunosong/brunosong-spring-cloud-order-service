@@ -3,6 +3,7 @@ package com.study.orderservice.controller;
 import com.study.orderservice.dto.OrderDto;
 import com.study.orderservice.jpa.OrderEntity;
 import com.study.orderservice.messagequeue.KafkaProducer;
+import com.study.orderservice.messagequeue.OrderProducer;
 import com.study.orderservice.service.OrderService;
 import com.study.orderservice.vo.RequestOrder;
 import com.study.orderservice.vo.ResponseOrder;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,6 +28,8 @@ public class OrderController {
     private final OrderService orderService;
 
     private final KafkaProducer kafkaProducer;
+
+    private final OrderProducer orderProducer;
 
     @GetMapping("/health_check")
     public String status() {
@@ -43,13 +47,20 @@ public class OrderController {
         OrderDto orderDto = mapper.map(order, OrderDto.class);
         orderDto.setUserId(userId);
 
-        OrderDto creOrderDto = orderService.createOrder(orderDto);
+        /* 카푸카로 변경하기 위해서 주석 */
+        //OrderDto creOrderDto = orderService.createOrder(orderDto);
 
-        ResponseOrder responseOrder = mapper.map(creOrderDto, ResponseOrder.class);
+        /* kafka */
+        orderDto.setOrderId(UUID.randomUUID().toString());
+        orderDto.setTotalPrice(order.getQty() * order.getUnitPrice());
 
         /* 카푸카로 오더 데이터를 전달한다. */
         kafkaProducer.send("example-catalog-topic", orderDto );
 
+        /* 카푸카로 값을 보낸다. */
+        orderProducer.send("orders", orderDto);
+
+        ResponseOrder responseOrder = mapper.map(orderDto, ResponseOrder.class);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseOrder);
     }
 
