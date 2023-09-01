@@ -8,6 +8,7 @@ import com.study.orderservice.service.OrderService;
 import com.study.orderservice.vo.RequestOrder;
 import com.study.orderservice.vo.ResponseOrder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.core.env.Environment;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/order-service")
+@Slf4j
 public class OrderController {
 
     private final Environment env;
@@ -41,34 +43,38 @@ public class OrderController {
     public ResponseEntity<ResponseOrder> createOrder(@RequestBody RequestOrder order ,
                                                      @PathVariable String userId) {
 
+        log.info("Before retrieve orders data");
+
         ModelMapper mapper = new ModelMapper();
         mapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
 
         OrderDto orderDto = mapper.map(order, OrderDto.class);
         orderDto.setUserId(userId);
 
-        /* 카푸카로 변경하기 위해서 주석 */
-        //OrderDto creOrderDto = orderService.createOrder(orderDto);
+
+        OrderDto creOrderDto = orderService.createOrder(orderDto);
 
         /* kafka */
-        orderDto.setOrderId(UUID.randomUUID().toString());
-        orderDto.setTotalPrice(order.getQty() * order.getUnitPrice());
+//        orderDto.setOrderId(UUID.randomUUID().toString());
+//        orderDto.setTotalPrice(order.getQty() * order.getUnitPrice());
 
         /* 카푸카로 오더 데이터를 전달한다. */
-        kafkaProducer.send("example-catalog-topic", orderDto );
+        //kafkaProducer.send("example-catalog-topic", orderDto );
 
         /* 카푸카로 값을 보낸다. */
-        orderProducer.send("orders", orderDto);
+        //orderProducer.send("orders", orderDto);
 
         ResponseOrder responseOrder = mapper.map(orderDto, ResponseOrder.class);
+
+        log.info("After retrieve orders data");
         return ResponseEntity.status(HttpStatus.CREATED).body(responseOrder);
     }
 
 
     // 사용자가 조회를 한다.
     @GetMapping("/{userId}/orders")
-    public ResponseEntity<List<ResponseOrder>> getOrders(@PathVariable String userId) {
-
+    public ResponseEntity<List<ResponseOrder>> getOrders(@PathVariable String userId) throws Exception{
+        log.info("Before retrieve orders data");
         Iterable<OrderEntity> orders = orderService.getOrdersByUserId(userId);
 
         List<ResponseOrder> result = new ArrayList<>();
@@ -76,6 +82,15 @@ public class OrderController {
         orders.forEach( order -> {
             result.add(new ModelMapper().map(order,ResponseOrder.class));
         });
+
+        try {
+            Thread.sleep(1000);
+            throw new Exception("장애 발생");
+        } catch (InterruptedException e) {
+            log.warn(e.getMessage());
+        }
+
+        log.info("Add retrieve orders data");
 
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
