@@ -43,3 +43,8 @@ logging:
     com.study.orderservice: debug
 
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh, health, beans, httptrace, busrefresh, info, metrics, prometheus

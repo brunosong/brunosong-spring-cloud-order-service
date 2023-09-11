@@ -51,7 +51,7 @@ public class OrderController {
         OrderDto orderDto = mapper.map(order, OrderDto.class);
         orderDto.setUserId(userId);
 
-
+        /* JPA */
         OrderDto creOrderDto = orderService.createOrder(orderDto);
 
         /* kafka */
@@ -59,12 +59,12 @@ public class OrderController {
 //        orderDto.setTotalPrice(order.getQty() * order.getUnitPrice());
 
         /* 카푸카로 오더 데이터를 전달한다. */
-        //kafkaProducer.send("example-catalog-topic", orderDto );
+        kafkaProducer.send("example-catalog-topic", orderDto );
 
         /* 카푸카로 값을 보낸다. */
         //orderProducer.send("orders", orderDto);
 
-        ResponseOrder responseOrder = mapper.map(orderDto, ResponseOrder.class);
+        ResponseOrder responseOrder = mapper.map(creOrderDto, ResponseOrder.class);
 
         log.info("After retrieve orders data");
         return ResponseEntity.status(HttpStatus.CREATED).body(responseOrder);
@@ -82,13 +82,6 @@ public class OrderController {
         orders.forEach( order -> {
             result.add(new ModelMapper().map(order,ResponseOrder.class));
         });
-
-        try {
-            Thread.sleep(1000);
-            throw new Exception("장애 발생");
-        } catch (InterruptedException e) {
-            log.warn(e.getMessage());
-        }
 
         log.info("Add retrieve orders data");
 
